@@ -54,7 +54,8 @@ MEDIA_ROOT = BASE_DIR / 'media'
 # CORS settings
 CORS_ALLOW_ALL_ORIGINS = True
 CORS_ALLOWED_ORIGINS = [
-    "http://localhost:3000",  # Разрешаем запросы с фронтенда, который работает на http://localhost:3000
+    "http://localhost:3000",
+    "https://amedoferguson.github.io/TechnoBoom/",  # Разрешаем запросы с фронтенда, который работает на http://localhost:3000
 ]
 
 # Middleware
