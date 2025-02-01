@@ -21,5 +21,7 @@ RUN pip install --no-cache-dir -r /app/requirements.txt
 # Копируем все остальные файлы приложения
 COPY . /app/
 
+EXPOSE 8080
+
 # Указываем команду для старта приложения
 CMD ["python", "manage.py", "runserver", "0.0.0.0:8000"]
