@@ -12,7 +12,7 @@ SECRET_KEY = 'django-insecure-qvr^zs1@#0lmari&yhhx0tqdy^siw7$k-k-l0877zt2b7165#8
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['backend-production-39f6.up.railway.app']
+ALLOWED_HOSTS = ['*']
 
 APPEND_SLASH = False
 CORS_ORIGIN_ALLOW_ALL = True
@@ -90,7 +90,7 @@ DATABASES = {
         'ENGINE': 'django.db.backends.mysql',
         'NAME': 'railway',  # Имя вашей базы данных
         'USER': 'root',  # Имя пользователя
-        'PASSWORD': 'hUoZEuRCxWDtMnObNiAwKaVCSEECxCMe',  # Пароль
+        'PASSWORD': 'goYpUOGEhOmWUQXKVSZxuKAUgZSXdPPM',  # Пароль
         'HOST': 'mysql.railway.internal',  # Хост базы данных
         'PORT': '3306',  # Порт
     }
