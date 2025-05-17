@@ -39,7 +39,7 @@ class LaptopListCreateView(APIView):
             return Response({"error": "Authentication required"}, status=status.HTTP_401_UNAUTHORIZED)
 
         data = request.data.copy()
-        data["owner"] = request.user.id
+        data["owner"] = request.user.pk
 
         image_file = request.FILES.get("image")
         try:
