@@ -1,21 +1,11 @@
-# urls.py
 from django.urls import path
-from .views import (
-    RegisterView,
-    MyTokenObtainPairView,
-    TokenRefreshView,
-    UserDetailView,
-    UserUpdateView,
-    UserByIdDetailView,
-    IsAdminView,
-)
+from . import views
 
 urlpatterns = [
-    path('register/', RegisterView.as_view(), name='register'),
-    path('login/', MyTokenObtainPairView.as_view(), name='login'),
-    path('token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
-    path('auth/users/<int:pk>/', UserUpdateView.as_view(), name='user-update'),
-    path('user/', UserDetailView.as_view(), name='user-detail'),
-    path('users/<int:pk>/', UserByIdDetailView.as_view(), name='user-by-id'),
-    path('admin-check/', IsAdminView.as_view(), name='admin-check'),
+    path('register/', views.register, name='register'),  # Регистрация
+    path('login/', views.MyTokenObtainPairView.as_view(), name='login'),  # Логин
+    path('token/refresh/', views.TokenRefreshView.as_view(), name='token_refresh'),  # Обновление токена
+    path('auth/users/<int:pk>/', views.UserUpdateView.as_view(), name='user-update'),  # Убедитесь, что это правильный путь
+    path('user/', views.UserDetailView.as_view(), name='user-detail'),  # Получение текущего пользователя
+    path('users/<int:pk>/', views.UserByIdDetailView.as_view(), name='user-by-id'),  # Получение пользователя по ID
 ]
