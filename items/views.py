@@ -7,6 +7,25 @@ from .serializers import LaptopSerializer
 from .utils import upload_image_to_imgur
 
 
+class LaptopService:
+    @staticmethod
+    def get_laptop_or_404(pk):
+        try:
+            return Laptop.objects.get(pk=pk)
+        except Laptop.DoesNotExist:
+            return None
+
+    @staticmethod
+    def upload_image(image_file):
+        if image_file:
+            return upload_image_to_imgur(image_file)
+        return None
+
+    @staticmethod
+    def check_owner(laptop, user):
+        return laptop.owner == user
+
+
 class LaptopListCreateView(APIView):
     permission_classes = [IsAuthenticatedOrReadOnly]
 
@@ -17,20 +36,18 @@ class LaptopListCreateView(APIView):
 
     def post(self, request):
         if not request.user.is_authenticated:
-            return Response(
-                {"error": "Authentication required"}, status=status.HTTP_401_UNAUTHORIZED
-            )
+            return Response({"error": "Authentication required"}, status=status.HTTP_401_UNAUTHORIZED)
 
         data = request.data.copy()
         data["owner"] = request.user.id
 
         image_file = request.FILES.get("image")
-        if image_file:
-            try:
-                image_url = upload_image_to_imgur(image_file)
+        try:
+            image_url = LaptopService.upload_image(image_file)
+            if image_url:
                 data["image_url"] = image_url
-            except Exception as e:
-                return Response({"error": f"Image upload failed: {str(e)}"}, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            return Response({"error": f"Image upload failed: {str(e)}"}, status=status.HTTP_400_BAD_REQUEST)
 
         serializer = LaptopSerializer(data=data)
         if serializer.is_valid():
@@ -44,34 +61,28 @@ class LaptopRetrieveUpdateDeleteView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request, pk):
-        try:
-            laptop = Laptop.objects.get(pk=pk)
-        except Laptop.DoesNotExist:
+        laptop = LaptopService.get_laptop_or_404(pk)
+        if not laptop:
             return Response({"error": "Laptop not found"}, status=status.HTTP_404_NOT_FOUND)
         serializer = LaptopSerializer(laptop)
         return Response(serializer.data)
 
     def put(self, request, pk):
-        try:
-            laptop = Laptop.objects.get(pk=pk)
-        except Laptop.DoesNotExist:
+        laptop = LaptopService.get_laptop_or_404(pk)
+        if not laptop:
             return Response({"error": "Laptop not found"}, status=status.HTTP_404_NOT_FOUND)
 
-        if laptop.owner != request.user:
-            return Response(
-                {"error": "You do not have permission to edit this laptop."},
-                status=status.HTTP_403_FORBIDDEN,
-            )
+        if not LaptopService.check_owner(laptop, request.user):
+            return Response({"error": "You do not have permission to edit this laptop."}, status=status.HTTP_403_FORBIDDEN)
 
         data = request.data.copy()
-
         image_file = request.FILES.get("image")
-        if image_file:
-            try:
-                image_url = upload_image_to_imgur(image_file)
+        try:
+            image_url = LaptopService.upload_image(image_file)
+            if image_url:
                 data["image_url"] = image_url
-            except Exception as e:
-                return Response({"error": f"Image upload failed: {str(e)}"}, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            return Response({"error": f"Image upload failed: {str(e)}"}, status=status.HTTP_400_BAD_REQUEST)
 
         serializer = LaptopSerializer(laptop, data=data, partial=True)
         if serializer.is_valid():
@@ -81,16 +92,12 @@ class LaptopRetrieveUpdateDeleteView(APIView):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     def delete(self, request, pk):
-        try:
-            laptop = Laptop.objects.get(pk=pk)
-        except Laptop.DoesNotExist:
+        laptop = LaptopService.get_laptop_or_404(pk)
+        if not laptop:
             return Response({"error": "Laptop not found"}, status=status.HTTP_404_NOT_FOUND)
 
-        if laptop.owner != request.user:
-            return Response(
-                {"error": "You do not have permission to delete this laptop."},
-                status=status.HTTP_403_FORBIDDEN,
-            )
+        if not LaptopService.check_owner(laptop, request.user):
+            return Response({"error": "You do not have permission to delete this laptop."}, status=status.HTTP_403_FORBIDDEN)
 
         laptop.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)

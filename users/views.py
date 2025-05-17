@@ -4,18 +4,32 @@ from rest_framework.views import APIView
 from rest_framework.permissions import IsAuthenticated, IsAuthenticatedOrReadOnly
 from rest_framework.generics import RetrieveAPIView, CreateAPIView, UpdateAPIView
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
-from django.contrib.auth import get_user_model
-from django.contrib.auth.hashers import make_password
-from .serializers import CustomUserSerializer, CustomTokenObtainPairSerializer, CustomUserUpdateSerializer
 from rest_framework_simplejwt.tokens import AccessToken
+from django.contrib.auth import get_user_model
+
+from .serializers import (
+    CustomUserSerializer,
+    CustomTokenObtainPairSerializer,
+    CustomUserUpdateSerializer,
+)
+
+
+class UserService:
+    @staticmethod
+    def validate_update_permission(token, user_id_to_edit):
+        if not token:
+            raise PermissionError("Токен не найден.")
+        try:
+            access_token = AccessToken(token.split()[1])
+            user_id = access_token['user_id']
+            if user_id != int(user_id_to_edit):
+                raise PermissionError("Нет прав для обновления данных другого пользователя.")
+        except Exception as e:
+            raise PermissionError(str(e))
 
 
 class RegisterUserView(CreateAPIView):
     serializer_class = CustomUserSerializer
-
-    def perform_create(self, serializer):
-        serializer.validated_data['password'] = make_password(serializer.validated_data['password'])
-        serializer.save()
 
 
 class MyTokenObtainPairView(TokenObtainPairView):
@@ -47,17 +61,12 @@ class UserUpdateView(UpdateAPIView):
 
     def patch(self, request, *args, **kwargs):
         token = request.headers.get('Authorization', None)
-        if not token:
-            return Response({"detail": "Токен не найден."}, status=status.HTTP_400_BAD_REQUEST)
+        user_id_to_edit = kwargs.get('pk')
 
         try:
-            access_token = AccessToken(token.split()[1])
-            user_id = access_token['user_id']
-            if user_id != int(kwargs['pk']):
-                return Response({"detail": "Нет прав для обновления данных другого пользователя."},
-                                status=status.HTTP_403_FORBIDDEN)
-        except Exception as e:
-            return Response({"detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+            UserService.validate_update_permission(token, user_id_to_edit)
+        except PermissionError as e:
+            return Response({"detail": str(e)}, status=status.HTTP_403_FORBIDDEN)
 
         return self.partial_update(request, *args, **kwargs)
 
