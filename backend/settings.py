@@ -34,10 +34,10 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    'rest_framework',  # Если используется DRF
+    'rest_framework',  
     'corsheaders',
     'users',
-    'items',  # Добавьте ваше приложение здесь
+    'items',  
     'rest_framework_simplejwt',
 ]
 

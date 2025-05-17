@@ -1,10 +1,11 @@
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status, permissions
+from rest_framework.permissions import IsAuthenticatedOrReadOnly
 from .models import Laptop
 from .serializers import LaptopSerializer
-from rest_framework.permissions import IsAuthenticatedOrReadOnly
 from .utils import upload_image_to_imgur
+
 
 class LaptopListCreateView(APIView):
     permission_classes = [IsAuthenticatedOrReadOnly]
@@ -15,26 +16,22 @@ class LaptopListCreateView(APIView):
         return Response(serializer.data)
 
     def post(self, request):
-        # Проверяем, авторизован ли пользователь
         if not request.user.is_authenticated:
             return Response(
                 {"error": "Authentication required"}, status=status.HTTP_401_UNAUTHORIZED
             )
 
         data = request.data.copy()
-        data["owner"] = request.user.id  # Добавляем владельца
+        data["owner"] = request.user.id
 
-        # Обработка изображения, если оно есть
         image_file = request.FILES.get("image")
         if image_file:
             try:
-                # Загружаем изображение на Imgur
                 image_url = upload_image_to_imgur(image_file)
                 data["image_url"] = image_url
             except Exception as e:
                 return Response({"error": f"Image upload failed: {str(e)}"}, status=status.HTTP_400_BAD_REQUEST)
 
-        # Сериализация и сохранение
         serializer = LaptopSerializer(data=data)
         if serializer.is_valid():
             serializer.save()
@@ -67,7 +64,7 @@ class LaptopRetrieveUpdateDeleteView(APIView):
             )
 
         data = request.data.copy()
-        # Обработка изображения
+
         image_file = request.FILES.get("image")
         if image_file:
             try:
@@ -80,6 +77,7 @@ class LaptopRetrieveUpdateDeleteView(APIView):
         if serializer.is_valid():
             serializer.save()
             return Response(serializer.data)
+
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     def delete(self, request, pk):
