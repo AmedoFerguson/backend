@@ -55,7 +55,8 @@ CSRF_TRUSTED_ORIGINS = ['https://backend-production-a524.up.railway.app']
 CORS_ALLOW_ALL_ORIGINS = True
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",
-    "https://amedoferguson.github.io",  # Разрешаем запросы с фронтенда, который работает на http://localhost:3000
+    "https://amedoferguson.github.io",
+    "https://backend-production-a524.up.railway.app"
 ]
 
 # Middleware
