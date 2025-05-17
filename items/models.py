@@ -6,7 +6,7 @@ class Laptop(models.Model):
     model = models.CharField(max_length=255)
     price = models.DecimalField(max_digits=10, decimal_places=2)
     description = models.TextField()
-    image_url = models.URLField(blank=True, null=True) 
+    image_url = models.URLField(blank=True, null=True)
     owner = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,

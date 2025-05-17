@@ -1,7 +1,7 @@
 import requests
 
 IMGUR_UPLOAD_URL = "https://api.imgur.com/3/image"
-IMGUR_CLIENT_ID = "cae9fdb8403f3a4"  # Вставьте свой Client ID
+IMGUR_CLIENT_ID = "cae9fdb8403f3a4"  # Вставьте сюда свой Client ID
 
 def upload_image_to_imgur(image_file):
     headers = {"Authorization": f"Client-ID {IMGUR_CLIENT_ID}"}

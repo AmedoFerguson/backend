@@ -1,7 +1,7 @@
 from django.urls import path
-from .views import LaptopListCreateView, LaptopRetrieveUpdateDeleteView
+from . import views
 
 urlpatterns = [
-    path('items/', LaptopListCreateView.as_view(), name='laptop-list-create'),
-    path('items/<int:pk>/', LaptopRetrieveUpdateDeleteView.as_view(), name='laptop-detail'),
+    path('items/', views.LaptopListCreateView.as_view(), name='laptop-list-create'),
+    path('items/<int:pk>/', views.LaptopRetrieveUpdateDeleteView.as_view(), name='laptop-detail'),
 ]

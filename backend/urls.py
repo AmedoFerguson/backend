@@ -13,7 +13,6 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     path('items/', include('items.urls')),
     path('auth/', include('users.urls')),
-    path('', include('items.urls')),
     path('favicon.ico', favicon),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
 
