@@ -1,34 +1,28 @@
 from rest_framework import status
-from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import IsAuthenticated, IsAuthenticatedOrReadOnly
+from rest_framework.generics import RetrieveAPIView, CreateAPIView, UpdateAPIView
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 from django.contrib.auth import get_user_model
 from django.contrib.auth.hashers import make_password
 from .serializers import CustomUserSerializer, CustomTokenObtainPairSerializer, CustomUserUpdateSerializer
-from rest_framework.generics import RetrieveAPIView
-from rest_framework.permissions import IsAuthenticatedOrReadOnly
-from rest_framework_simplejwt.tokens import AccessToken  # Импортируйте AccessToken
+from rest_framework_simplejwt.tokens import AccessToken
 
 
-@api_view(['POST'])
-def register(request):
-    if request.method == 'POST':
-        serializer = CustomUserSerializer(data=request.data)
-        if serializer.is_valid():
-            password = serializer.validated_data.get('password')
-            serializer.validated_data['password'] = make_password(password)
-            user = serializer.save()
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+class RegisterUserView(CreateAPIView):
+    serializer_class = CustomUserSerializer
+
+    def perform_create(self, serializer):
+        serializer.validated_data['password'] = make_password(serializer.validated_data['password'])
+        serializer.save()
 
 
 class MyTokenObtainPairView(TokenObtainPairView):
     serializer_class = CustomTokenObtainPairSerializer
 
 
-class TokenRefreshView(TokenRefreshView):
+class MyTokenRefreshView(TokenRefreshView):
     pass
 
 
@@ -45,36 +39,27 @@ class UserDetailView(APIView):
         return Response(data)
 
 
-class UserUpdateView(APIView):
+class UserUpdateView(UpdateAPIView):
+    serializer_class = CustomUserUpdateSerializer
     permission_classes = [IsAuthenticated]
+    queryset = get_user_model().objects.all()
+    lookup_field = 'pk'
 
-    def patch(self, request, pk):
-        # Проверяем, что токен есть в заголовке
+    def patch(self, request, *args, **kwargs):
         token = request.headers.get('Authorization', None)
-        if token:
-            try:
-                access_token = AccessToken(token.split()[1])  # Разделяем токен и извлекаем его
-                user_id = access_token['user_id']  # Извлекаем user_id из токена
-                
-                # Проверяем, что ID пользователя совпадает с тем, что в URL
-                if user_id != pk:
-                    return Response({"detail": "Нет прав для обновления данных другого пользователя."},
-                                    status=status.HTTP_403_FORBIDDEN)
+        if not token:
+            return Response({"detail": "Токен не найден."}, status=status.HTTP_400_BAD_REQUEST)
 
-                # Извлекаем пользователя из базы
-                user = get_user_model().objects.get(id=user_id)
-                
-                # Применяем сериализатор с частичным обновлением
-                serializer = CustomUserUpdateSerializer(user, data=request.data, partial=True)
-                if serializer.is_valid():
-                    serializer.save()
-                    return Response(serializer.data, status=status.HTTP_200_OK)
-                return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            access_token = AccessToken(token.split()[1])
+            user_id = access_token['user_id']
+            if user_id != int(kwargs['pk']):
+                return Response({"detail": "Нет прав для обновления данных другого пользователя."},
+                                status=status.HTTP_403_FORBIDDEN)
+        except Exception as e:
+            return Response({"detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
-            except Exception as e:
-                return Response({"detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)
-
-        return Response({"detail": "Токен не найден."}, status=status.HTTP_400_BAD_REQUEST)
+        return self.partial_update(request, *args, **kwargs)
 
 
 class UserByIdDetailView(RetrieveAPIView):
