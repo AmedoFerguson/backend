@@ -6,5 +6,5 @@ class LaptopSerializer(serializers.ModelSerializer):
         model = Laptop
         fields = '__all__'
         extra_kwargs = {
-            'image_url': {'required': False},
+            'image_url': {'required': False},  # Поле необязательно
         }

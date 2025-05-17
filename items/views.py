@@ -1,69 +1,98 @@
-# items/views.py
-
-from rest_framework import status, permissions, generics
 from rest_framework.views import APIView
 from rest_framework.response import Response
+from rest_framework import status, permissions
 from .models import Laptop
 from .serializers import LaptopSerializer
+from rest_framework.permissions import IsAuthenticatedOrReadOnly
 from .utils import upload_image_to_imgur
-from rest_framework.pagination import PageNumberPagination
-from rest_framework import serializers
 
+class LaptopListCreateView(APIView):
+    permission_classes = [IsAuthenticatedOrReadOnly]
 
-class LaptopPagination(PageNumberPagination):
-    page_size = 6
-    page_size_query_param = 'page_size'
-    max_page_size = 24
-
-
-class LaptopModelsListView(APIView):
     def get(self, request):
-        models = Laptop.objects.values_list('model', flat=True).distinct()
-        result = [{'id': idx, 'model': model} for idx, model in enumerate(models)]
+        laptops = Laptop.objects.all()
+        serializer = LaptopSerializer(laptops, many=True)
+        return Response(serializer.data)
 
-        return Response(result)
+    def post(self, request):
+        # Проверяем, авторизован ли пользователь
+        if not request.user.is_authenticated:
+            return Response(
+                {"error": "Authentication required"}, status=status.HTTP_401_UNAUTHORIZED
+            )
 
+        data = request.data.copy()
+        data["owner"] = request.user.id  # Добавляем владельца
 
-class LaptopListCreateView(generics.ListCreateAPIView):
-    queryset = Laptop.objects.all()
-    serializer_class = LaptopSerializer
-    permission_classes = [permissions.IsAuthenticatedOrReadOnly]
-
-    def perform_create(self, serializer):
-        image_file = self.request.FILES.get("image")
-        data = self.request.data.copy()
-
+        # Обработка изображения, если оно есть
+        image_file = request.FILES.get("image")
         if image_file:
-            result = upload_image_to_imgur(image_file)
-            if not result.startswith("http"):
-                raise serializers.ValidationError({"image_url": f"Не вдалося завантажити зображення: {result}"})
-            data["image_url"] = result
+            try:
+                # Загружаем изображение на Imgur
+                image_url = upload_image_to_imgur(image_file)
+                data["image_url"] = image_url
+            except Exception as e:
+                return Response({"error": f"Image upload failed: {str(e)}"}, status=status.HTTP_400_BAD_REQUEST)
 
-        serializer.save(owner=self.request.user, **data)
+        # Сериализация и сохранение
+        serializer = LaptopSerializer(data=data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
-class LaptopRetrieveUpdateDeleteView(generics.RetrieveUpdateDestroyAPIView):
-    queryset = Laptop.objects.all()
-    serializer_class = LaptopSerializer
+class LaptopRetrieveUpdateDeleteView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
-    def perform_update(self, serializer):
-        laptop = self.get_object()
-        if laptop.owner != self.request.user:
-            raise permissions.PermissionDenied("У вас немає прав для редагування цього ноутбука")
+    def get(self, request, pk):
+        try:
+            laptop = Laptop.objects.get(pk=pk)
+        except Laptop.DoesNotExist:
+            return Response({"error": "Laptop not found"}, status=status.HTTP_404_NOT_FOUND)
+        serializer = LaptopSerializer(laptop)
+        return Response(serializer.data)
 
-        image_file = self.request.FILES.get("image")
-        data = self.request.data.copy()
+    def put(self, request, pk):
+        try:
+            laptop = Laptop.objects.get(pk=pk)
+        except Laptop.DoesNotExist:
+            return Response({"error": "Laptop not found"}, status=status.HTTP_404_NOT_FOUND)
 
+        if laptop.owner != request.user:
+            return Response(
+                {"error": "You do not have permission to edit this laptop."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        data = request.data.copy()
+        # Обработка изображения
+        image_file = request.FILES.get("image")
         if image_file:
-            result = upload_image_to_imgur(image_file)
-            if not result.startswith("http"):
-                raise serializers.ValidationError({"image_url": f"Не вдалося завантажити зображення: {result}"})
-            data["image_url"] = result
+            try:
+                image_url = upload_image_to_imgur(image_file)
+                data["image_url"] = image_url
+            except Exception as e:
+                return Response({"error": f"Image upload failed: {str(e)}"}, status=status.HTTP_400_BAD_REQUEST)
 
-        serializer.save(**data)
+        serializer = LaptopSerializer(laptop, data=data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-    def perform_destroy(self, instance):
-        if instance.owner != self.request.user:
-            raise permissions.PermissionDenied("У вас немає прав для видалення цього ноутбука")
-        instance.delete()
+    def delete(self, request, pk):
+        try:
+            laptop = Laptop.objects.get(pk=pk)
+        except Laptop.DoesNotExist:
+            return Response({"error": "Laptop not found"}, status=status.HTTP_404_NOT_FOUND)
+
+        if laptop.owner != request.user:
+            return Response(
+                {"error": "You do not have permission to delete this laptop."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        laptop.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
