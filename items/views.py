@@ -1,54 +1,73 @@
-from rest_framework import status, permissions, generics
+from rest_framework.views import APIView
 from rest_framework.response import Response
-from rest_framework.permissions import IsAuthenticatedOrReadOnly, IsAuthenticated
+from rest_framework import status, permissions
 from .models import Laptop
 from .serializers import LaptopSerializer
+from rest_framework.permissions import IsAuthenticatedOrReadOnly
 from .utils import upload_image_to_imgur
-from rest_framework import serializers
 
-
-from rest_framework import status, permissions, generics
-from rest_framework.response import Response
-from rest_framework.permissions import IsAuthenticatedOrReadOnly, IsAuthenticated
-from .models import Laptop
-from .serializers import LaptopSerializer
-from .utils import upload_image_to_imgur
-from rest_framework import serializers
-
-
-class LaptopListCreateView(generics.ListCreateAPIView):
-    queryset = Laptop.objects.all()
-    serializer_class = LaptopSerializer
+class LaptopListCreateView(APIView):
     permission_classes = [IsAuthenticatedOrReadOnly]
 
-    def perform_create(self, serializer):
-        image_file = self.request.FILES.get("image")
-        image_url = None
+    def get(self, request):
+        laptops = Laptop.objects.all()
+        serializer = LaptopSerializer(laptops, many=True)
+        return Response(serializer.data)
 
+    def post(self, request):
+        # Проверяем, авторизован ли пользователь
+        if not request.user.is_authenticated:
+            return Response(
+                {"error": "Authentication required"}, status=status.HTTP_401_UNAUTHORIZED
+            )
+
+        data = request.data.copy()
+        data["owner"] = request.user.id  # Добавляем владельца
+
+        # Обработка изображения, если оно есть
+        image_file = request.FILES.get("image")
         if image_file:
             try:
+                # Загружаем изображение на Imgur
                 image_url = upload_image_to_imgur(image_file)
+                data["image_url"] = image_url
             except Exception as e:
-                raise serializers.ValidationError({"image": f"Image upload failed: {str(e)}"})
+                return Response({"error": f"Image upload failed: {str(e)}"}, status=status.HTTP_400_BAD_REQUEST)
 
-        serializer.save(owner=self.request.user, image_url=image_url)
+        # Сериализация и сохранение
+        serializer = LaptopSerializer(data=data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
+class LaptopRetrieveUpdateDeleteView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
 
-class LaptopRetrieveUpdateDeleteView(generics.RetrieveUpdateDestroyAPIView):
-    queryset = Laptop.objects.all()
-    serializer_class = LaptopSerializer
-    permission_classes = [IsAuthenticated]
+    def get(self, request, pk):
+        try:
+            laptop = Laptop.objects.get(pk=pk)
+        except Laptop.DoesNotExist:
+            return Response({"error": "Laptop not found"}, status=status.HTTP_404_NOT_FOUND)
+        serializer = LaptopSerializer(laptop)
+        return Response(serializer.data)
 
-    def get_object(self):
-        obj = super().get_object()
-        if self.request.method in ['PUT', 'DELETE'] and obj.owner != self.request.user:
-            from rest_framework.exceptions import PermissionDenied
-            raise PermissionDenied("You do not have permission to modify this laptop.")
-        return obj
+    def put(self, request, pk):
+        try:
+            laptop = Laptop.objects.get(pk=pk)
+        except Laptop.DoesNotExist:
+            return Response({"error": "Laptop not found"}, status=status.HTTP_404_NOT_FOUND)
 
-    def update(self, request, *args, **kwargs):
+        if laptop.owner != request.user:
+            return Response(
+                {"error": "You do not have permission to edit this laptop."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
         data = request.data.copy()
+        # Обработка изображения
         image_file = request.FILES.get("image")
         if image_file:
             try:
@@ -57,9 +76,23 @@ class LaptopRetrieveUpdateDeleteView(generics.RetrieveUpdateDestroyAPIView):
             except Exception as e:
                 return Response({"error": f"Image upload failed: {str(e)}"}, status=status.HTTP_400_BAD_REQUEST)
 
-        kwargs['partial'] = True
-        return super().update(request, *args, **kwargs)
-class LaptopSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Laptop
-        fields = '__all__' 
+        serializer = LaptopSerializer(laptop, data=data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    def delete(self, request, pk):
+        try:
+            laptop = Laptop.objects.get(pk=pk)
+        except Laptop.DoesNotExist:
+            return Response({"error": "Laptop not found"}, status=status.HTTP_404_NOT_FOUND)
+
+        if laptop.owner != request.user:
+            return Response(
+                {"error": "You do not have permission to delete this laptop."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        laptop.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
