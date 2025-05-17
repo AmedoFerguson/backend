@@ -7,23 +7,32 @@ from .utils import upload_image_to_imgur
 from rest_framework import serializers
 
 
+from rest_framework import status, permissions, generics
+from rest_framework.response import Response
+from rest_framework.permissions import IsAuthenticatedOrReadOnly, IsAuthenticated
+from .models import Laptop
+from .serializers import LaptopSerializer
+from .utils import upload_image_to_imgur
+from rest_framework import serializers
+
+
 class LaptopListCreateView(generics.ListCreateAPIView):
     queryset = Laptop.objects.all()
     serializer_class = LaptopSerializer
     permission_classes = [IsAuthenticatedOrReadOnly]
 
     def perform_create(self, serializer):
-        data = self.request.data.copy()
-
         image_file = self.request.FILES.get("image")
+        image_url = None
+
         if image_file:
             try:
                 image_url = upload_image_to_imgur(image_file)
-                data["image_url"] = image_url
             except Exception as e:
                 raise serializers.ValidationError({"image": f"Image upload failed: {str(e)}"})
 
-        serializer.save(owner=self.request.user, **data)
+        serializer.save(owner=self.request.user, image_url=image_url)
+
 
 
 class LaptopRetrieveUpdateDeleteView(generics.RetrieveUpdateDestroyAPIView):
@@ -50,3 +59,7 @@ class LaptopRetrieveUpdateDeleteView(generics.RetrieveUpdateDestroyAPIView):
 
         kwargs['partial'] = True
         return super().update(request, *args, **kwargs)
+class LaptopSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Laptop
+        fields = '__all__' 
