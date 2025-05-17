@@ -1,7 +1,5 @@
-# items/views.py
-
 from rest_framework import status, permissions, generics
-from rest_framework.views import APIView
+from rest_framework.views import APIView 
 from rest_framework.response import Response
 from .models import Laptop
 from .serializers import LaptopSerializer
@@ -14,20 +12,16 @@ class LaptopPagination(PageNumberPagination):
     page_size = 6
     page_size_query_param = 'page_size'
     max_page_size = 24
-
-
 class LaptopModelsListView(APIView):
     def get(self, request):
         models = Laptop.objects.values_list('model', flat=True).distinct()
         result = [{'id': idx, 'model': model} for idx, model in enumerate(models)]
         return Response(result)
 
-
 class LaptopListCreateView(generics.ListCreateAPIView):
     queryset = Laptop.objects.all()
     serializer_class = LaptopSerializer
     permission_classes = [permissions.IsAuthenticatedOrReadOnly]
-    pagination_class = LaptopPagination
 
     def perform_create(self, serializer):
         image_file = self.request.FILES.get("image")
