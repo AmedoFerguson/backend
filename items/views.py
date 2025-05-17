@@ -19,9 +19,8 @@ class LaptopPagination(PageNumberPagination):
 class LaptopModelsListView(APIView):
     def get(self, request):
         models = Laptop.objects.values_list('model', flat=True).distinct()
-        if not models:  
-            return Response([])  
         result = [{'id': idx, 'model': model} for idx, model in enumerate(models)]
+
         return Response(result)
 
 

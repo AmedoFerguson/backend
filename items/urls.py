@@ -5,5 +5,5 @@ from .views import LaptopListCreateView, LaptopRetrieveUpdateDeleteView, LaptopM
 urlpatterns = [
     path('items/', LaptopListCreateView.as_view(), name='laptop-list-create'),
     path('items/<int:pk>/', LaptopRetrieveUpdateDeleteView.as_view(), name='laptop-detail'),
-    path('items/models/', LaptopModelsListView.as_view(), name='laptop-models'),
+    path('items/models/', LaptopModelsListView.as_view(), name='laptop-models-list'),
 ]
