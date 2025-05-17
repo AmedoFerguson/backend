@@ -16,7 +16,6 @@ class LaptopListCreateView(generics.ListCreateAPIView):
     queryset = Laptop.objects.all()
     serializer_class = LaptopSerializer
     permission_classes = [permissions.IsAuthenticatedOrReadOnly]
-    pagination_class = LaptopPagination  # ← добавь это
 
     def perform_create(self, serializer):
         image_file = self.request.FILES.get("image")
