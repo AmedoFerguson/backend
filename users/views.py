@@ -17,7 +17,7 @@ from .serializers import (
 User = get_user_model()
 
 
-# ==== Сервісний клас ====
+
 
 class UserService:
     @staticmethod
@@ -29,7 +29,7 @@ class UserService:
             raise PermissionError("Токен не знайдено.")
 
         try:
-            # Витяг id з токену
+            
             access_token = AccessToken(token.split()[1])
             user_id = access_token['user_id']
             if user_id != int(user_id_to_edit):
@@ -38,14 +38,14 @@ class UserService:
             raise PermissionError(f"Помилка перевірки токена: {str(e)}")
 
 
-# ==== Реєстрація ====
+
 
 class RegisterUserView(CreateAPIView):
     serializer_class = CustomUserSerializer
     queryset = User.objects.all()
 
 
-# ==== Отримання токена ====
+
 
 class MyTokenObtainPairView(TokenObtainPairView):
     serializer_class = CustomTokenObtainPairSerializer
@@ -55,7 +55,7 @@ class MyTokenRefreshView(TokenRefreshView):
     pass
 
 
-# ==== Деталі поточного користувача ====
+
 
 class UserDetailView(APIView):
     permission_classes = [IsAuthenticated]
@@ -74,7 +74,7 @@ class UserDetailView(APIView):
         return Response(data)
 
 
-# ==== Оновлення користувача ====
+
 
 class UserUpdateView(UpdateAPIView):
     serializer_class = CustomUserUpdateSerializer
@@ -94,7 +94,7 @@ class UserUpdateView(UpdateAPIView):
         return self.partial_update(request, *args, **kwargs)
 
 
-# ==== Перегляд користувача по ID ====
+
 
 class UserByIdDetailView(RetrieveAPIView):
     queryset = User.objects.all()
